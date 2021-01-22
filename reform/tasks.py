@@ -304,8 +304,6 @@ def deploy(c, project, quadrant):
 @task(
     help={
         "quadrant": "Which quadrant to pre-process. (Available: [%s])" % (quadrants),
-        "config": "Which config file under configs/{quadrant} to use. "
-        + "(Default: config.json)",
     }
 )
 def preform(c, quadrant):
