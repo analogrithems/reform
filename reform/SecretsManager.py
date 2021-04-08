@@ -231,7 +231,6 @@ class SecretsManager:
                         sec_list.append(self.secretEnecoderRing(i))
                     else:
                         sec_list.append(self.rsa_encrypt(i))
-
                 secrets[key] = sec_list
             else:
                 secrets[key] = self.rsa_encrypt(value)
@@ -245,7 +244,15 @@ class SecretsManager:
             if isinstance(value, dict):
                 secrets[key] = self.secretDecoderRing(value)
             elif isinstance(value, list):
-                secrets[key] = self.secretDecoderRing(value)
+                sec_list = []
+                for i in value:
+                    if isinstance(i, dict):
+                        sec_list.append(self.secretDecoderRing(i))
+                    elif isinstance(i, list):
+                        sec_list.append(self.secretDecoderRing(i))
+                    else:
+                        sec_list.append(self.rsa_decrypt(i))
+                secrets[key] = sec_list
             else:
                 secrets[key] = self.rsa_decrypt(value)
         return secrets
