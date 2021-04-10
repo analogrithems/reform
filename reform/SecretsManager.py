@@ -80,10 +80,10 @@ class SecretsManager:
 
     def UnSerializeSettings(self):
         """
-      This unserializes the settings that were stored in the
-      serializeSettings.  This is helpful to reduce the amount of
-      args that must be passed all the time,
-      """
+        This unserializes the settings that were stored in the
+        serializeSettings.  This is helpful to reduce the amount of
+        args that must be passed all the time,
+        """
         config = self.settings.get_config()
 
         if (
@@ -111,11 +111,11 @@ class SecretsManager:
 
     def InteractiveEdit(self):
         """
-      In interactive editing mode we decrypt our MasterSecretsVolume and
-      show all secrets in all environments.  You can then add, edit or remove
-      secrets at will.  When you exit the editor each environments secrets
-      are split up and placed in their corresponding environment config file.
-      """
+        In interactive editing mode we decrypt our MasterSecretsVolume and
+        show all secrets in all environments.  You can then add, edit or remove
+        secrets at will.  When you exit the editor each environments secrets
+        are split up and placed in their corresponding environment config file.
+        """
 
         # Read an decrypt all env secret volumes
         config = self.settings.get_config()
@@ -217,7 +217,7 @@ class SecretsManager:
 
     def secretEnecoderRing(self, secrets):
         """
-          Steps thought our object and encrypts all the values
+        Steps thought our object and encrypts all the values
         """
         for key, value in secrets.items():
             if isinstance(value, dict):
@@ -238,7 +238,7 @@ class SecretsManager:
 
     def secretDecoderRing(self, secrets):
         """
-          Steps thought our object and decrypts all the values
+        Steps thought our object and decrypts all the values
         """
         for key, value in secrets.items():
             if isinstance(value, dict):

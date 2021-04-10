@@ -45,20 +45,24 @@ outputs = "text (default), json"
 
 def p_log(msg, severity="info"):
     """
-  This function will output to the console useful information.
-  """
+    This function will output to the console useful information.
+    """
     run_time = time.process_time()
     print("%s: %s. (%s)" % (severity.upper(), msg, run_time), file=sys.stderr)
 
+
 def stat_wrap(func):
     """
-      This will give stats at the end to see the time it took.  Helpful when planning prod deployments from stage environments.
+    This will give stats at the end to see the time it took.  Helpful when planning prod deployments from stage environments.
     """
+
     def inner(*args, **kwargs):
         run_time = time.process_time()
-        p_log("Completed in %s"%(run_time))
+        p_log("Completed in %s" % (run_time))
         return func(*args, **kwargs)
+
     return inner
+
 
 @task(
     help={
@@ -151,6 +155,7 @@ def clean(c, project):
         debug("Clean: removing %s" % (filename))
         os.remove(filename)
 
+
 @task(
     help={
         "project": "Which project do we want to init. "
@@ -221,7 +226,7 @@ def plan(c, project, quadrant):
 
     # Run pre task
     init(c, project, quadrant)
-    pl = os.getenv('TF_PARALLEL',10)
+    pl = os.getenv("TF_PARALLEL", 10)
     _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 
     with c.cd(project_path):
@@ -229,6 +234,7 @@ def plan(c, project, quadrant):
         debug("Plan: %s output '%s'" % (_cmd, _init_))
 
     p_log("Complete: Plan")
+
 
 @task(
     help={
@@ -265,7 +271,7 @@ def apply(c, project, quadrant):
         plan(c, project, quadrant)
         debug("Apply: produce a plan")
 
-    pl = os.getenv('TF_PARALLEL',10)
+    pl = os.getenv("TF_PARALLEL", 10)
     _cmd = "%s apply -parallelism=%s %s" % (tf_bin, pl, project_tfplan)
 
     with c.cd(project_path):
@@ -273,6 +279,7 @@ def apply(c, project, quadrant):
         debug("Apply: %s output '%s'" % (_cmd, _init_))
 
     p_log("Complete: Apply")
+
 
 @task(
     help={
@@ -336,7 +343,7 @@ def preform(c, quadrant):
 
     config = ConfigManager.ConfigManager({"env": quadrant}).get_merge_configs()
     secret_manager = SecretsManager.SecretsManager(
-        {"key": quadrant, "cipher": 'RSA_AES'}
+        {"key": quadrant, "cipher": "RSA_AES"}
     )
     env_secret = secret_manager.getSecretPath(quadrant)
     secrets = secret_manager.decryptSecretFile(env_secret)
@@ -358,7 +365,7 @@ def preform(c, quadrant):
                             config=config,
                             project=os.path.basename(directory),
                             quadrant=quadrant,
-                            secrets=secrets
+                            secrets=secrets,
                         )
                         debug(redered_template)
                         outfile.write(
@@ -396,7 +403,7 @@ def preform(c, quadrant):
                         config=config,
                         project=os.path.basename(directory),
                         quadrant=quadrant,
-                        secrets=secrets
+                        secrets=secrets,
                     )
                     debug(redered_template)
                     outfile.write(
@@ -417,6 +424,7 @@ def preform(c, quadrant):
 
     p_log("Complete: Preform")
 
+
 @task(
     help={
         "bucket": "Name of an AWS bucket to create, must be unique",
@@ -431,9 +439,9 @@ def mkS3Bucket(c, bucket, region):
     """
     p_log("Task: mkS3Bucket")
     # First lets find our kms key with alias kms/s3
-    client = boto3.client("kms",region)
+    client = boto3.client("kms", region)
     bucket_constraint = {}
-    if region == 'us-east-1':
+    if region == "us-east-1":
         s3c = boto3.client("s3")
     else:
         s3c = boto3.client("s3", region_name=region)
@@ -448,7 +456,11 @@ def mkS3Bucket(c, bucket, region):
         for a in response["Aliases"]:
             if a["AliasName"] == "alias/aws/s3":
                 if "TargetKeyId" not in a:
-                    p_log("Can't create secure bucket '%s' in '%s', no initial kms alias/aws/s3 setup yet.  This happens after you've created your first secure s3 bucket." % (bucket, region), 'error')
+                    p_log(
+                        "Can't create secure bucket '%s' in '%s', no initial kms alias/aws/s3 setup yet.  This happens after you've created your first secure s3 bucket."
+                        % (bucket, region),
+                        "error",
+                    )
                 kms_id = a["TargetKeyId"]
                 break
         if response["Truncated"]:
@@ -459,15 +471,10 @@ def mkS3Bucket(c, bucket, region):
         debug("mkS3Bucket: Never found KMS ID for secure bucket creation")
         exit(3)
 
-
     p_log("Region: %s" % (region))
-    create_args = {
-        "ACL": "private",
-        "Bucket": bucket
-    }
-    if region != 'us-east-1':
-        create_args['CreateBucketConfiguration'] = bucket_constraint
-
+    create_args = {"ACL": "private", "Bucket": bucket}
+    if region != "us-east-1":
+        create_args["CreateBucketConfiguration"] = bucket_constraint
 
     response = s3c.create_bucket(**create_args)
     response = s3c.put_bucket_versioning(
