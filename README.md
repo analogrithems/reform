@@ -12,12 +12,18 @@ The Reform tool kit provides the following features.
 * tooling for handling nested maps
 * password generators
 
+## Requirements
+
+Please make sure you have the following installed before install reform
+
+* Python 3.8
+* Terraform v0.14.10
 
 ## Getting Started
 The first thing you need to do is install reform.  Currently the simplest way to do this is 
 
 ```
-pip3 install git+ssh://git@github.com/analogrithems/reform.git
+pip install git+ssh://git@github.com/analogrithems/reform.git
 ```
 
 The reform tool set expects your project to be structured in a particular way.  Below illustrates that layout and documents why.
