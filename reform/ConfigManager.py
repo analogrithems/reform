@@ -301,6 +301,15 @@ class ConfigManager:
                                             ins.update(i)
                                         else:
                                             print(f"error: {k} -> {v} -> {i}")
+                                elif k == "module":
+                                    for i, n in v.items():
+                                        if isinstance(n, dict):
+                                            mod_path = os.path.abspath(join(directory,n["source"]["0"])
+                                            ins[i] = self.auto_generate_directory(mod_path)
+                                        else:
+                                            print(f"error: {k} -> {v} -> {i}")
+
+                            default_config.update(ins)
                         except skippable_exceptions:
                             if skip:
                                 self.logger.info(f"skipping {in_file_path} since we couldn't load it's terraform code")
@@ -308,7 +317,7 @@ class ConfigManager:
                                 continue
                             raise
 
-                        default_config.update(ins)
+
         else:
             raise RuntimeError('Invalid Path %s', directory)
 
