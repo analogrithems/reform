@@ -298,14 +298,14 @@ class ConfigManager:
                                 if k == "variable":
                                     for i in v:
                                         if isinstance(i, dict):
-                                            ins.update(i)
+                                            ins[k].update(i)
                                         else:
                                             print(f"error: {k} -> {v} -> {i}")
                                 elif k == "module":
                                     for i, n in v.items():
                                         if isinstance(n, dict):
                                             mod_path = os.path.abspath(join(directory,n["source"]["0"])
-                                            ins[i] = self.auto_generate_directory(mod_path)
+                                            ins[k][i] = self.auto_generate_directory(mod_path)
                                         else:
                                             print(f"error: {k} -> {v} -> {i}")
 
