@@ -1,5 +1,7 @@
-invoke
-pycryptodome
-pycryptodome
-pyee
-pathlib
+Jinja2<3.0.0,>=2.11.3
+boto3<2.0.0,>=1.17.49
+invoke<2.0.0,>=1.5.0
+pathlib<2.0.0,>=1.0.1
+pycryptodome<4.0.0,>=3.10.1
+pyee<9.0.0,>=8.1.0
+python-hcl2<3.0.0,>=2.0.3

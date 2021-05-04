@@ -72,3 +72,11 @@ class TestConfigManager(unittest.TestCase):
         c = MockContext()
         result = tasks.config_delete(c, quadrant, attribute)
         self.assertTrue(result)
+
+    def test_auto_generate_default_config(self):
+        """
+    This test removing an attribute
+    """
+        c = MockContext()
+        result = tasks.auto_generate_config(c, 'project')
+        self.assertTrue(result)

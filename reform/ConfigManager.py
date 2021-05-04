@@ -299,17 +299,30 @@ class ConfigManager:
                                     for i in v:
                                         print(f"found var: {k} with {i}")
                                         if isinstance(i, dict):
-                                            ins[k].update(i)
+                                            if k in ins:
+                                                ins[k].update(i)
+                                            else:
+                                                ins[k] = i
                                         else:
                                             print(f"error: {k} -> {v} -> {i}")
                                 elif k == "module":
-                                    for i, n in v.items():
-                                        print(f"found mod: {k} with {i}")
-                                        if isinstance(n, dict):
-                                            mod_path = os.path.abspath(join(directory,n["source"]["0"])
-                                            ins[k][i] = self.auto_generate_directory(mod_path)
-                                        else:
-                                            print(f"error: {k} -> {v} -> {i}")
+                                    if k not in ins:
+                                        ins[k] = {}
+
+                                    if isinstance(v, list):
+                                        for i in v:
+                                            for mod, argu in i.items():
+                                                print(f"found mod: {mod} with {argu}")
+                                                if isinstance(argu, dict):
+                                                    mod_path = os.path.abspath(os.path.join(directory,argu["source"][0]))
+                                                    n = self.auto_generate_directory(mod_path)
+                                                    if mod in ins[k]:
+                                                        ins[k][mod].update(n)
+                                                    else:
+                                                        ins[k][mod] = n
+
+                                                else:
+                                                    print(f"error: {k} -> {v} -> {i}")
 
                             default_config.update(ins)
                         except skippable_exceptions:
