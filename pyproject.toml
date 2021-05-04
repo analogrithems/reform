@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "reform"
-version = "0.2.1"
+version = "0.2.2"
 description = "Reform is a tool kit developed to expand and simplify creating terraform infrastructures with the AWS provider."
 authors = ["Aaron Collins <Aaron.Collinsa+reform@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.7"
 invoke = "^1.5.0"
 boto3 = "^1.17.49"
 pycryptodome = "^3.10.1"
