@@ -297,12 +297,14 @@ class ConfigManager:
                             for k, v in parsed_data.items():
                                 if k == "variable":
                                     for i in v:
+                                        print(f"found var: {k} with {i}")
                                         if isinstance(i, dict):
                                             ins[k].update(i)
                                         else:
                                             print(f"error: {k} -> {v} -> {i}")
                                 elif k == "module":
                                     for i, n in v.items():
+                                        print(f"found mod: {k} with {i}")
                                         if isinstance(n, dict):
                                             mod_path = os.path.abspath(join(directory,n["source"]["0"])
                                             ins[k][i] = self.auto_generate_directory(mod_path)
