@@ -36,13 +36,9 @@ class ConfigManager:
             self.settings.GetReformRoot()
         )
 
-        self.modules_dir = "%s/modules/" % (
-            self.settings.GetReformRoot()
-        )
+        self.modules_dir = "%s/modules/" % (self.settings.GetReformRoot())
 
-        self.projects_dir = "%s/projects/" % (
-            self.settings.GetReformRoot()
-        )
+        self.projects_dir = "%s/projects/" % (self.settings.GetReformRoot())
 
         self.config_file = "%s/configs/%s/%s" % (
             self.settings.GetReformRoot(),
@@ -234,16 +230,13 @@ class ConfigManager:
         """
         This function steps through the modules and projects directory and generates the configs/default/config.json based off walking the whole projects directories (skipping .terraform) <Note: consider doing inverse and only walking the processed files> to read the resources and modules inputs and creating a large nested json object of our project
         """
-        default_config = {
-            'projects': {}
-        }
+        default_config = {"projects": {}}
         processed_files = set()
         for entry in os.scandir(self.projects_dir):
-            if not entry.name.startswith('.') and entry.is_dir():
+            if not entry.name.startswith(".") and entry.is_dir():
 
                 dir_prefix = os.path.commonpath([self.projects_dir, entry.path])
                 relative_current_dir = os.path.relpath(entry.path, dir_prefix)
-
 
                 # skip any files that we already processed or generated to avoid loops and file lock errors
                 if relative_current_dir in processed_files:
@@ -251,12 +244,15 @@ class ConfigManager:
                 else:
                     processed_files.add(relative_current_dir)
 
-                default_config['projects'][relative_current_dir] = self.auto_generate_directory(entry.path)
+                default_config["projects"][
+                    relative_current_dir
+                ] = self.auto_generate_directory(entry.path)
 
         parsed_data = {}
-        with open(self.auto_default_config_file, '+w') as out_file:
-            json.dump(default_config, out_file)
+        with open(self.auto_default_config_file, "+w") as out_file:
+            json.dump(default_config, out_file, indent=2)
 
+        return True
 
     def auto_generate_directory(self, directory, skip=True):
         """
@@ -265,7 +261,7 @@ class ConfigManager:
         skippable_exceptions = (
             UnexpectedToken,
             UnexpectedCharacters,
-            UnicodeDecodeError
+            UnicodeDecodeError,
         )
 
         default_config = {}
@@ -280,7 +276,7 @@ class ConfigManager:
                     in_file_path = entry.path
 
                     # Skip any file that isn't a terraform file
-                    if not in_file_path.endswith(('.tf','.tfvars')):
+                    if not in_file_path.endswith((".tf", ".tfvars")):
                         continue
 
                     # skip any files that we already processed or generated to avoid loops and file lock errors
@@ -289,15 +285,15 @@ class ConfigManager:
 
                     processed_files.add(in_file_path)
 
-                    with open(in_file_path, 'r') as in_file:
+                    with open(in_file_path, "r") as in_file:
                         ins = {}
-                        self.logger.info(F"Processing {in_file_path}")
+                        self.logger.info(f"Processing {in_file_path}")
                         try:
                             parsed_data = load(in_file)
                             for k, v in parsed_data.items():
                                 if k == "variable":
                                     for i in v:
-                                        print(f"found var: {k} with {i}")
+                                        self.logger.debug(f"found var: {k} with {i}")
                                         if isinstance(i, dict):
                                             if k in ins:
                                                 ins[k].update(i)
@@ -312,10 +308,18 @@ class ConfigManager:
                                     if isinstance(v, list):
                                         for i in v:
                                             for mod, argu in i.items():
-                                                print(f"found mod: {mod} with {argu}")
+                                                self.logger.debug(
+                                                    f"found mod: {mod} with {argu}"
+                                                )
                                                 if isinstance(argu, dict):
-                                                    mod_path = os.path.abspath(os.path.join(directory,argu["source"][0]))
-                                                    n = self.auto_generate_directory(mod_path)
+                                                    mod_path = os.path.abspath(
+                                                        os.path.join(
+                                                            directory, argu["source"][0]
+                                                        )
+                                                    )
+                                                    n = self.auto_generate_directory(
+                                                        mod_path
+                                                    )
                                                     if mod in ins[k]:
                                                         ins[k][mod].update(n)
                                                     else:
@@ -326,14 +330,15 @@ class ConfigManager:
 
                             default_config.update(ins)
                         except skippable_exceptions:
+                            self.logger.warning(
+                                f"skipping {in_file_path} since we couldn't load it's terraform code"
+                            )
+
                             if skip:
-                                self.logger.info(f"skipping {in_file_path} since we couldn't load it's terraform code")
-                                print(f"skipping {in_file_path} since we couldn't load it's terraform code")
                                 continue
                             raise
 
-
         else:
-            raise RuntimeError('Invalid Path %s', directory)
+            raise RuntimeError("Invalid Path %s", directory)
 
         return default_config
