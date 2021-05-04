@@ -272,14 +272,12 @@ class ConfigManager:
         if os.path.isdir(directory):
             processed_files = set()
 
-            for current_dir, dirs, files in os.walk(directory):
-                if current_dir.startswith('.'):
-                    continue
-                dir_prefix = os.path.commonpath([directory, current_dir])
-                relative_current_dir = os.path.relpath(current_dir, dir_prefix)
+            for entry in os.scandir(directory):
+                dir_prefix = os.path.commonpath([directory, entry.path])
+                relative_current_dir = os.path.relpath(entry.path, dir_prefix)
 
-                for file_name in files:
-                    in_file_path = os.path.join(current_dir, file_name)
+                if entry.is_file():
+                    in_file_path = entry.path
 
                     # Skip any file that isn't a terraform file
                     if not in_file_path.endswith(('.tf','.tfvars')):
@@ -290,12 +288,19 @@ class ConfigManager:
                         continue
 
                     processed_files.add(in_file_path)
-                    default_config[relative_current_dir] = {}
 
                     with open(in_file_path, 'r') as in_file:
+                        ins = {}
                         self.logger.info(F"Processing {in_file_path}")
                         try:
                             parsed_data = load(in_file)
+                            for k, v in parsed_data.items():
+                                if k == "variable":
+                                    for i in v:
+                                        if isinstance(i, dict):
+                                            ins.update(i)
+                                        else:
+                                            print(f"error: {k} -> {v} -> {i}")
                         except skippable_exceptions:
                             if skip:
                                 self.logger.info(f"skipping {in_file_path} since we couldn't load it's terraform code")
@@ -303,7 +308,7 @@ class ConfigManager:
                                 continue
                             raise
 
-                        default_config[relative_current_dir].update(parsed_data)
+                        default_config.update(ins)
         else:
             raise RuntimeError('Invalid Path %s', directory)
 
