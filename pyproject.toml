@@ -13,6 +13,7 @@ pycryptodome = "^3.10.1"
 pyee = "^8.1.0"
 pathlib = "^1.0.1"
 Jinja2 = "^2.11.3"
+python-hcl2 = "^2.0.3"
 
 [tool.poetry.dev-dependencies]
 black = "^20.8b1"
