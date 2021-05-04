@@ -849,3 +849,20 @@ def rotate_key(c, quadrant, cipher="PKCS1_v1_5"):
     """
     p_log("Task: rotate_key")
     print(SecretsManager.SecretsManager({"key": quadrant, "cipher": cipher}).rekey())
+
+
+@task(
+    help={
+        "project": "Which project do we want to auto-generate config. "
+        + "(Available: [%s])" % (projects),
+    }
+)
+def auto_generate_config(c, project):
+    p_log("Task: auto_generate_config")
+    reform_root = settings.GetReformRoot()
+    if project not in projects:
+        debug("auto_generate_config: Not a valid project: '%s'" % (project))
+        p_log("auto_generate_config: Not a valid project: '%s'" % (project))
+        exit(1)
+
+    config = ConfigManager.ConfigManager({"env": "defaults"}).auto_generate_default_config()
