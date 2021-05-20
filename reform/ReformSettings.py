@@ -58,7 +58,6 @@ class ReformSettings:
     def get_quadrants(self):
         if self.reform_settings_path is not False:
             q = self.config.sections()
-            q.remove("global")
             return q
         else:
             return []

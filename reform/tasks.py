@@ -447,30 +447,6 @@ def mkS3Bucket(c, bucket, region):
         s3c = boto3.client("s3", region_name=region)
         bucket_constraint = {"LocationConstraint": region}
 
-    response = client.list_aliases(Limit=100)
-    more = True
-    kms_id = False
-    while more:
-        more = False
-        # print(response)
-        for a in response["Aliases"]:
-            if a["AliasName"] == "alias/aws/s3":
-                if "TargetKeyId" not in a:
-                    p_log(
-                        "Can't create secure bucket '%s' in '%s', no initial kms alias/aws/s3 setup yet.  This happens after you've created your first secure s3 bucket."
-                        % (bucket, region),
-                        "error",
-                    )
-                kms_id = a["TargetKeyId"]
-                break
-        if response["Truncated"]:
-            more = True
-            response = client.list_aliases(Marker=response["NextMarker"], Limit=100)
-
-    if not kms_id:
-        debug("mkS3Bucket: Never found KMS ID for secure bucket creation")
-        exit(3)
-
     p_log("Region: %s" % (region))
     create_args = {"ACL": "private", "Bucket": bucket}
     if region != "us-east-1":
@@ -488,7 +464,6 @@ def mkS3Bucket(c, bucket, region):
                 {
                     "ApplyServerSideEncryptionByDefault": {
                         "SSEAlgorithm": "aws:kms",
-                        "KMSMasterKeyID": kms_id,
                     }
                 }
             ]
