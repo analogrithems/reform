@@ -1,0 +1,56 @@
+# STONEHENGE software catalog YAML FILE
+# https://stonehenge.stepstone.tools/
+# -------------------------------------
+# 
+# Repo: reform
+# 
+# -------------------------------------
+
+apiVersion: backstage.io/v1alpha1
+# 
+kind: Component
+spec:
+  # Backstage entity type - REQUIRED 
+  # choose one from: service / website / library 
+  type: service
+
+  # Team owning this entity - REQUIRED 
+  # insert team's AD group that meets following requirements:
+  # https://stonehenge.stepstone.tools/docs/default/component/stonehenge
+  #
+  # use sAMAccountName
+  owner: team-mya-engineering
+
+  # Lifecycle of entity - REQUIRED 
+  # choose one from: production / experimental / deprecated 
+  lifecycle: production
+  system: mya-platform-infrastructure
+  # one of:
+  #   mya-platform-images
+  #   mya-platform-infrastructure
+  #   mya-platform-monitoring 
+  #   mya-platform-services
+  #   mya-platform-tools
+  
+  dependsOn:
+    - component:reform
+
+metadata:
+  name: reform
+  description: Mya platform component
+  tags:
+    - python
+    - terraform
+    - mya
+    - reform
+  links:
+    - url: https://stash.stepstone.com/projects/MYA/repos/reform/browse
+      title: Repository (STASH)
+      icon: github
+    - url: https://github.com/mya-systems/reform
+      title: Repository (GitHub)
+      icon: github
+
+  labels:
+    catalog-type: technology
+    tier: mya-platform
