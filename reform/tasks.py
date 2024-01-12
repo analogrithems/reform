@@ -225,7 +225,7 @@ def plan(c, project, quadrant):
         exit(2)
 
     # Run pre task
-    init(c, project, quadrant)
+    #init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
     _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 
