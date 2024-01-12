@@ -11,7 +11,7 @@ from lark import UnexpectedToken, UnexpectedCharacters
 
 from reform import ReformSettings, SecretsManager
 from pyee import EventEmitter
-from collections import MutableMapping
+from collections.abc import MutableMapping
 from functools import reduce
 
 ee = EventEmitter()
