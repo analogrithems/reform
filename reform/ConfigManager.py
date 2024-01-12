@@ -102,14 +102,12 @@ class ConfigManager:
             if os.path.exists(self.default_config_file):
                 with open(self.default_config_file, "r+") as f:
                     # Read file contents
-                    defaults = json.loads(f.read())
+                    defaults = json.loads(os.path.expandvars(f.read()))
 
         with open(self.config_file, "r+") as f:
             # Read file contents
-            configs = reduce(ConfigManager.deep_merge, (defaults, json.loads(f.read())))
+            configs = reduce(ConfigManager.deep_merge, (defaults, json.loads(os.path.expandvars(f.read()))))
 
-        #Now lets expand our environment variables inside our config to catch secrets from our environment            
-        configs = os.path.expandvar(configs)
         return configs
 
     def get(configs, attribute):
