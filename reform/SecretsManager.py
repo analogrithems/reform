@@ -192,19 +192,22 @@ class SecretsManager:
 
     def decryptSecretFile(self, env_secret):
         decrypted_vault = {}
+        try:
+            with open(env_secret, "r") as f:
+                try:
+                    cipheredSecrets = json.loads(f.read())
+                    self.logger.debug(
+                        "Read file: %s got %s" % (env_secret, cipheredSecrets)
+                    )
+                except json.decoder.JSONDecodeError:
+                    self.logger.error("Error loading %s secrets json" % (env_secret))
+                    exit(-5)
 
-        with open(env_secret, "r") as f:
-            try:
-                cipheredSecrets = json.loads(f.read())
-                self.logger.debug(
-                    "Read file: %s got %s" % (env_secret, cipheredSecrets)
-                )
-            except json.decoder.JSONDecodeError:
-                self.logger.error("Error loading %s secrets json" % (env_secret))
-                exit(-5)
-
-            self.logger.debug(cipheredSecrets)
-            decrypted_vault = self.secretDecoderRing(cipheredSecrets)
+                self.logger.debug(cipheredSecrets)
+                decrypted_vault = self.secretDecoderRing(cipheredSecrets)
+            
+        except FileNotFoundError as e:
+            pass
 
         return decrypted_vault
 
