@@ -211,12 +211,6 @@ def plan(c, project, quadrant):
     p_log("Start: Plan")
     reform_root = settings.GetReformRoot()
 
-    # TODO build this dynamically
-    if project not in projects:
-        debug("Plan: Not a valid project: '%s'" % (project))
-        p_log("Plan: Not a valid project: '%s'" % (project))
-        exit(1)
-
     project_path = "%s/projects/%s" % (reform_root, project)
     project_tf = Path(project_path)
     if not project_tf.is_dir():
@@ -225,7 +219,10 @@ def plan(c, project, quadrant):
         exit(2)
 
     # Run pre task
-    #init(c, project, quadrant)
+    if os.path.isdir(f"{project_path}/.terraform"):
+        preform(c, quadrant)
+    else:
+        init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
     _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 

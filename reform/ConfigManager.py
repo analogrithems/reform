@@ -107,6 +107,9 @@ class ConfigManager:
         with open(self.config_file, "r+") as f:
             # Read file contents
             configs = reduce(ConfigManager.deep_merge, (defaults, json.loads(f.read())))
+
+        #Now lets expand our environment variables inside our config to catch secrets from our environment            
+        configs = os.path.expandvar(configs)
         return configs
 
     def get(configs, attribute):
