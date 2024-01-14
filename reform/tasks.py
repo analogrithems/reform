@@ -352,7 +352,7 @@ def preform(c, quadrant):
             p_log(f"An error occurred: {error}")
             p_log(f"Failed to find and run preform_hook() in {work_dir}/helpers")
             traceback.print_exc()
-            #pass
+            exit(-22)
         
 
     config = ConfigManager.ConfigManager({"env": quadrant}).get_merge_configs()
