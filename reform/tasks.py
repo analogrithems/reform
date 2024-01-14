@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import traceback
 
 from reform import ConfigManager, SecretsManager, ReformSettings
 from jinja2 import Environment, FileSystemLoader
@@ -337,6 +338,22 @@ def preform(c, quadrant):
     env.filters["is_list"] = is_list
     env.filters["is_dict"] = is_dict
     env.filters["jsonify"] = json.dumps
+    
+    # Lets load custom helpers
+    if os.path.isfile(f"{work_dir}/helpers/__init__.py"):
+        p_log("Found custom helper, importing")
+        sys.path.insert(1, work_dir)
+
+        try:
+            from helpers import preform_hook
+            
+            preform_hook()
+        except Exception as error:
+            p_log(f"An error occurred: {error}")
+            p_log(f"Failed to find and run preform_hook() in {work_dir}/helpers")
+            traceback.print_exc()
+            #pass
+        
 
     config = ConfigManager.ConfigManager({"env": quadrant}).get_merge_configs()
     secret_manager = SecretsManager.SecretsManager(
