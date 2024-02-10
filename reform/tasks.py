@@ -42,6 +42,7 @@ quadrants = ", ".join(settings.get_quadrants())
 tf_bin = "terraform"
 ciphers = "PKCS1_v1_5 (default), RSA_AES, PKCS1_OAEP"
 outputs = "text (default), json"
+os.environ["TF_IN_AUTOMATION"] = "1"
 
 
 def p_log(msg, severity="info"):
@@ -225,7 +226,8 @@ def plan(c, project, quadrant):
     else:
         init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
-    _cmd = "%s plan -out=tfplan -parallelism=%s -no-color" % (tf_bin, pl)
+
+    _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
@@ -270,7 +272,7 @@ def apply(c, project, quadrant):
         debug("Apply: produce a plan")
 
     pl = os.getenv("TF_PARALLEL", 10)
-    _cmd = "%s apply -no-color -parallelism=%s %s " % (tf_bin, pl, project_tfplan)
+    _cmd = "%s apply -parallelism=%s %s " % (tf_bin, pl, project_tfplan)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
