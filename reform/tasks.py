@@ -225,7 +225,7 @@ def plan(c, project, quadrant):
     else:
         init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
-    _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
+    _cmd = "%s plan -out=tfplan -parallelism=%s -no-color" % (tf_bin, pl)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
@@ -270,7 +270,7 @@ def apply(c, project, quadrant):
         debug("Apply: produce a plan")
 
     pl = os.getenv("TF_PARALLEL", 10)
-    _cmd = "%s apply -parallelism=%s %s" % (tf_bin, pl, project_tfplan)
+    _cmd = "%s apply -no-color -parallelism=%s %s " % (tf_bin, pl, project_tfplan)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
@@ -338,7 +338,7 @@ def preform(c, quadrant):
     env.filters["is_list"] = is_list
     env.filters["is_dict"] = is_dict
     env.filters["jsonify"] = json.dumps
-    
+
     # Lets load custom helpers
     if os.path.isfile(f"{work_dir}/helpers/__init__.py"):
         p_log("Found custom helper, importing")
@@ -346,14 +346,14 @@ def preform(c, quadrant):
 
         try:
             from helpers import preform_hook
-            
+
             preform_hook()
         except Exception as error:
             p_log(f"An error occurred: {error}")
             p_log(f"Failed to find and run preform_hook() in {work_dir}/helpers")
             traceback.print_exc()
             exit(-22)
-        
+
 
     config = ConfigManager.ConfigManager({"env": quadrant}).get_merge_configs()
     secret_manager = SecretsManager.SecretsManager(
