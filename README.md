@@ -10,14 +10,15 @@ The Reform tool kit provides the following features.
 * Templating with Jinja2
 * configuration management with default support
 * tooling for handling nested maps
-* password generators
+* Securty Minded
+* Enforces terraform best practices 
 
 ## Requirements
 
 Please make sure you have the following installed before install reform
 
-* Python 3.8
-* Terraform v0.14.10
+* Python 3.8 - 3.11
+* Terraform v1.1 - v1.6
 
 ## Getting Started
 The first thing you need to do is install reform.  Currently the simplest way to do this is 
@@ -49,14 +50,8 @@ Your project will look like this:
 │       ├── config.json   <- Your normal config settings go here
 │       └── secrets.json  <- Encrypted secrets go here See: cryptic
 │
-├── modules/
-│   └── [module]
-│      ├── main.tf
-│      ├── data.tf
-│      ├── locals.tf
-│      ├── output.tf
-│      ├── variables.tf
-│      └── [...].tf(.tpl)  <- See Preform for more information about templating
+├── helpers/
+│   └── __init__.py <- Where you can hook into inject your own secrets solution
 │
 
 ```
