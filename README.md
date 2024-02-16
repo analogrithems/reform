@@ -11,7 +11,7 @@ The Reform tool kit provides the following features.
 * configuration management with default support
 * tooling for handling nested maps
 * Securty Minded
-* Enforces terraform best practices 
+* Enforces terraform best practices
 
 ## Requirements
 
@@ -21,7 +21,7 @@ Please make sure you have the following installed before install reform
 * Terraform v1.1 - v1.6
 
 ## Getting Started
-The first thing you need to do is install reform.  Currently the simplest way to do this is 
+The first thing you need to do is install reform.  Currently the simplest way to do this is
 
 ```
 pip install git+https://git@github.com/analogrithems/reform.git
@@ -93,7 +93,7 @@ $ find .
 ./configs
 ./configs/dev
 ./configs/dev/config.json
-./modules
+./helpers/__init__.py
 ```
 
 Note: the .reform file should be included in you VCS it’s a way reform maps quadrants to aws regions to get it’s bucket region and pri/pub keys
@@ -359,10 +359,10 @@ This plan was saved to: tfplan
 
 To perform exactly these actions, run the following command to apply:
     terraform apply "tfplan"
-    
+
 ```
 
-6) Ok, now we can apply our changes with 
+6) Ok, now we can apply our changes with
 
 ```
 $ reform apply -q dev -p infrastructure
