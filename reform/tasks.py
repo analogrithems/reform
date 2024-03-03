@@ -227,7 +227,7 @@ def mkdocs(c, project, quadrant):
 
     tf_docs_args = os.getenv("TF_DOCS_ARGS", "")
 
-    _cmd = "%s markdown --recursive %s %s" % (tf_docs_bin, project_path, tf_docs_args)
+    _cmd = "%s markdown %s %s" % (tf_docs_bin, tf_docs_args, project_path)
 
     with c.cd(project_path):
         p_log("Running: %s" % (_cmd))
