@@ -40,6 +40,7 @@ settings = ReformSettings.ReformSettings()
 projects = settings.projects()
 quadrants = ", ".join(settings.get_quadrants())
 tf_bin = "terraform"
+tf_docs_bin = "terraform-docs"
 ciphers = "PKCS1_v1_5 (default), RSA_AES, PKCS1_OAEP"
 outputs = "text (default), json"
 os.environ["TF_IN_AUTOMATION"] = "1"
@@ -197,6 +198,41 @@ def init(c, project, quadrant):
         _init_ = c.run(_cmd).stdout.strip()
         debug("Init: %s output '%s'" % (_cmd, _init_))
 
+@task(
+    help={
+        "project": "Which project do we want to terraform-doc. "
+        + "(Available: [%s])" % (projects),
+        "quadrant": "Which quadrant to terraform-doc. (Available: [%s])" % (quadrants),
+    }
+)
+def mkdocs(c, project, quadrant):
+    """
+    This recursively runs terraform-docs on a project
+    """
+    p_log("Start: terrafrom-docs")
+    reform_root = settings.GetReformRoot()
+
+    project_path = "%s/projects/%s" % (reform_root, project)
+    project_tf = Path(project_path)
+    if not project_tf.is_dir():
+        debug("Plan: Project path does not exists: '%s'" % (project_path))
+        p_log("Plan: Project path does not exists: '%s'" % (project_path))
+        exit(2)
+
+    # Run pre task
+    if os.path.isdir(f"{project_path}/.terraform"):
+        preform(c, quadrant)
+    else:
+        init(c, project, quadrant)
+    tf_docs_args = os.getenv("TF_DOCS_ARGS", "")
+
+    _cmd = "%s markdown --recursive %s" % (tf_docs_bin, tf_docs_args)
+
+    with c.cd(project_path):
+        _init_ = c.run(_cmd).stdout.strip()
+        debug("terrafrom-docs: %s output '%s'" % (_cmd, _init_))
+
+    p_log("Complete: terrafrom-docs")
 
 @task(
     help={
@@ -552,36 +588,7 @@ def get_config(c):
     print(json.dumps(c))
 
 
-# TODO This function should not be in core
-@task()
-def tagger(c):
-    """
-    Find usage value or AWS Tags.
-    Using a json input to stdin we gather enough data to be able to specify the
-    usage of some resources.
-    """
-    p_log("Task: Tagger")
-    params = {}
 
-    lines = [x.strip() for x in sys.stdin.readlines()]
-
-    lines = list(filter(None, lines))
-    if len(lines) != 0:
-        params = json.loads(",".join(lines))
-
-    c = {"usage": "NULL"}
-
-    # Change the args to vessel and quadrant
-    if re.match("dev|stage", params["vpc_name"]):
-        c["usage"] = "non-prod"
-        if "client_name" in params and re.match("ops", params["client_name"]):
-            c["usage"] = "devops"
-    elif re.match("prod", params["vpc_name"]):
-        c["usage"] = "prod"
-        if "client_name" in params and re.match("demo|preview", params["client_name"]):
-            c["usage"] = "sales"
-
-    print(json.dumps(c))
 
 
 @task(help={"length": "Length of password to generate. (Default=10)"})
