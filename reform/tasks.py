@@ -441,10 +441,10 @@ def preform(c, quadrant):
     # Handle projects dir
     for directory, subdirectories, files in os.walk(projects_dir):
         for file in files:
-            if '.terraform/' in file:
+            if '.terraform/' in directory:
                 continue
 
-            if '.git/' in file:
+            if '.git/' in directory:
                 continue
 
             if file.endswith(template_suffix):
