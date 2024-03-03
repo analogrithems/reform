@@ -230,6 +230,7 @@ def mkdocs(c, project, quadrant):
     _cmd = "%s markdown --recursive %s %s" % (tf_docs_bin, project_path, tf_docs_args)
 
     with c.cd(project_path):
+        p_log("Running: %s" % (_cmd))
         _init_ = c.run(_cmd).stdout.strip()
         debug("terrafrom-docs: %s output '%s'" % (_cmd, _init_))
 
