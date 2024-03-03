@@ -227,7 +227,7 @@ def mkdocs(c, project, quadrant):
 
     tf_docs_args = os.getenv("TF_DOCS_ARGS", "")
 
-    _cmd = "%s markdown %s %s" % (tf_docs_bin, tf_docs_args, project_path)
+    _cmd = f"{tf_docs_bin} markdown document {tf_docs_args} {project_path} > README.md"
 
     with c.cd(project_path):
         p_log("Running: %s" % (_cmd))
