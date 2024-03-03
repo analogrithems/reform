@@ -405,6 +405,12 @@ def preform(c, quadrant):
     # Handle projects dir
     for directory, subdirectories, files in os.walk(projects_dir):
         for file in files:
+            if '.terraform/' in file:
+                continue
+
+            if '.git/' in file:
+                continue
+
             if file.endswith(template_suffix):
                 debug("Found template file: %s" % (file))
                 full_file_path = os.path.join(directory, file)
