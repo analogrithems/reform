@@ -224,9 +224,10 @@ def mkdocs(c, project, quadrant):
         preform(c, quadrant)
     else:
         init(c, project, quadrant)
+
     tf_docs_args = os.getenv("TF_DOCS_ARGS", "")
 
-    _cmd = "%s markdown --recursive %s" % (tf_docs_bin, tf_docs_args)
+    _cmd = "%s markdown --recursive %s %s" % (tf_docs_bin, project_path, tf_docs_args)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
@@ -402,6 +403,11 @@ def preform(c, quadrant):
     # Handle modules dir
     for directory, subdirectories, files in os.walk(modules_dir):
         for file in files:
+            if '.terraform/' in directory:
+                continue
+
+            if '.git/' in directory:
+                continue
             if file.endswith(template_suffix):
                 debug("Found template file: %s" % (file))
                 full_file_path = os.path.join(directory, file)
