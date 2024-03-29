@@ -47,13 +47,13 @@ class SecretsManager:
         self.pp = pprint.PrettyPrinter(indent=4)
         self.logger = logging.getLogger(__name__)
         self.logger.debug("ARGS: %s" % (self.pp.pformat(opts)))
-        try:
-            self.account_id = (
-                self.session.client("sts").get_caller_identity().get("Account")
-            )
-        except botocore.exceptions.ClientError:
-            self.logger.error("Failed to auth to AWS.")
-            exit(-9)
+        # try:
+        #     self.account_id = (
+        #         self.session.client("sts").get_caller_identity().get("Account")
+        #     )
+        # except botocore.exceptions.ClientError:
+        #     self.logger.error("Failed to auth to AWS.")
+        #     exit(-9)
 
         self.settings = ReformSettings.ReformSettings()
         self.UnSerializeSettings()
@@ -205,7 +205,7 @@ class SecretsManager:
 
                 self.logger.debug(cipheredSecrets)
                 decrypted_vault = self.secretDecoderRing(cipheredSecrets)
-            
+
         except FileNotFoundError as e:
             pass
 
