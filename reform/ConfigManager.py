@@ -25,7 +25,7 @@ class ConfigManager:
     def __init__(self, args):
         self.args = args
         self.logger = logging.getLogger(__name__)
-        self.logger.debug("ARGS: %s" % (yaml.dumps(args)))
+        self.logger.debug("ARGS: %s" % (yaml.dump(args, Dumper=Dumper)))
         self.settings = ReformSettings.ReformSettings()
 
         cf = ReformSettings.ReformSettings.reform_quadrant_config_file
@@ -141,7 +141,7 @@ class ConfigManager:
         configs = self.get_merge_configs()
         # print(yaml.dump(configs, Dumper=Dumper))
         self.logger.debug(
-            "get_merge_configs: %s=%s" % (self.config_file, yaml.dump(configsDumper=Dumper))
+            "get_merge_configs: %s=%s" % (self.config_file, yaml.dump(configs, Dumper=Dumper))
         )
         try:
             c = ConfigManager.get(configs, self.args["attribute"])
