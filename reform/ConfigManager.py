@@ -1,4 +1,4 @@
-import json
+import yaml
 import os
 import sys
 import logging
@@ -13,6 +13,10 @@ from reform import ReformSettings, SecretsManager
 from pyee import EventEmitter
 from collections.abc import MutableMapping
 from functools import reduce
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 ee = EventEmitter()
 
@@ -21,18 +25,18 @@ class ConfigManager:
     def __init__(self, args):
         self.args = args
         self.logger = logging.getLogger(__name__)
-        self.logger.debug("ARGS: %s" % (json.dumps(args)))
+        self.logger.debug("ARGS: %s" % (yaml.dumps(args)))
         self.settings = ReformSettings.ReformSettings()
 
         cf = ReformSettings.ReformSettings.reform_quadrant_config_file
         if "cipher" in self.args and self.args["cipher"]:
             cf = ReformSettings.ReformSettings.reform_quadrant_secret_file
 
-        self.auto_default_config_file = "%s/configs/defaults/auto_config.json" % (
+        self.auto_default_config_file = "%s/configs/defaults/auto_config.yaml" % (
             self.settings.GetReformRoot()
         )
 
-        self.default_config_file = "%s/configs/defaults/config.json" % (
+        self.default_config_file = "%s/configs/defaults/config.yaml" % (
             self.settings.GetReformRoot()
         )
 
@@ -51,13 +55,13 @@ class ConfigManager:
                 "'%s' file does not exists, creating it" % (self.config_file)
             )
             with open(self.config_file, "w+") as f:
-                f.write(json.dumps({}, indent=4, sort_keys=True))
+                f.write(yaml.dump({}, Dumper=Dumper))
             f.close()
 
-    def delete(d, keys):
+    def rm(d, keys):
         if "." in keys:
             key, rest = keys.split(".", 1)
-            ConfigManager.delete(d[key], rest, item)
+            ConfigManager.rm(d[key], rest, item)
         else:
             if keys not in d:
                 logging.getLogger(__name__).info("Missing %s from %s" % (keys, d))
@@ -102,11 +106,15 @@ class ConfigManager:
             if os.path.exists(self.default_config_file):
                 with open(self.default_config_file, "r+") as f:
                     # Read file contents
-                    defaults = json.loads(os.path.expandvars(f.read()))
+                    defaults = yaml.load(os.path.expandvars(f.read()), Loader=Loader)
+            elif os.path.exists(self.auto_default_config_file):
+                with open(self.auto_default_config_file, "r+") as f:
+                    # Read file contents
+                    defaults = yaml.load(os.path.expandvars(f.read()), Loader=Loader)
 
         with open(self.config_file, "r+") as f:
             # Read file contents
-            configs = reduce(ConfigManager.deep_merge, (defaults, json.loads(os.path.expandvars(f.read()))))
+            configs = reduce(ConfigManager.deep_merge, (defaults, yaml.load(os.path.expandvars(f.read()), Loader=Loader)))
 
         return configs
 
@@ -131,9 +139,9 @@ class ConfigManager:
     def read(self):
         c = False
         configs = self.get_merge_configs()
-        # print(json.dumps(configs, indent=4, sort_keys=True))
+        # print(yaml.dump(configs, Dumper=Dumper))
         self.logger.debug(
-            "get_merge_configs: %s=%s" % (self.config_file, json.dumps(configs))
+            "get_merge_configs: %s=%s" % (self.config_file, yaml.dump(configsDumper=Dumper))
         )
         try:
             c = ConfigManager.get(configs, self.args["attribute"])
@@ -159,7 +167,7 @@ class ConfigManager:
     def upsert(self):
         with open(self.config_file, "r+") as f:
             # Read file contents
-            configs = json.loads(f.read())
+            configs = yaml.load(f.read(), Loader=Loader)
 
             try:
                 c = ConfigManager.get(configs, self.args["attribute"])
@@ -181,7 +189,7 @@ class ConfigManager:
             # Go to start of file and write it out
             f.truncate()
             f.seek(0)
-            f.write(json.dumps(configs, indent=4, sort_keys=True))
+            f.write(yaml.dump(configs, Dumper=Dumper))
 
             # Emit the event to hook onto it
             ee.emit("ConfigManager.upsert", self)
@@ -191,13 +199,13 @@ class ConfigManager:
         result = False
         with open(self.config_file, "r+") as f:
             # Read file contents
-            configs = json.loads(f.read())
+            configs = yaml.load(f.read(), Loader=Loader)
 
             try:
                 c = ConfigManager.get(configs, self.args["attribute"])
                 if not c is None:
                     self.logger.debug("Removing Value: '%s'" % (c))
-                    ConfigManager.delete(configs, self.args["attribute"])
+                    ConfigManager.rm(configs, self.args["attribute"])
                 else:
                     self.logger.error(
                         "Value '%s' doesn't already exists" % (self.args["attribute"])
@@ -211,7 +219,7 @@ class ConfigManager:
             # Go to start of file and write it outf
             f.seek(0)
             f.truncate()
-            f.write(json.dumps(configs, indent=4, sort_keys=True))
+            f.write(yaml.dump(configs, Dumper=Dumper))
             # Emit the event to hook onto it
             ee.emit("ConfigManager.delete", self)
             result = True
@@ -229,7 +237,7 @@ class ConfigManager:
 
     def auto_generate_default_config(self):
         """
-        This function steps through the modules and projects directory and generates the configs/default/config.json based off walking the whole projects directories (skipping .terraform) <Note: consider doing inverse and only walking the processed files> to read the resources and modules inputs and creating a large nested json object of our project
+        This function steps through the modules and projects directory and generates the configs/default/config.yaml based off walking the whole projects directories (skipping .terraform) <Note: consider doing inverse and only walking the processed files> to read the resources and modules inputs and creating a large nested yaml object of our project
         """
         default_config = {"projects": {}}
         processed_files = set()
@@ -251,13 +259,13 @@ class ConfigManager:
 
         parsed_data = {}
         with open(self.auto_default_config_file, "+w") as out_file:
-            json.dump(default_config, out_file, indent=2)
+            out_file.write(yaml.dump(default_config, Dumper=Dumper))
 
         return True
 
     def auto_generate_directory(self, directory, skip=True):
         """
-        This function converts a directory to an autogenerated json object of inputs
+        This function converts a directory to an autogenerated yaml object of inputs
         """
         skippable_exceptions = (
             UnexpectedToken,

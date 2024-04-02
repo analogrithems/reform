@@ -12,6 +12,8 @@ import random
 import subprocess
 import tempfile
 import time
+import yaml
+
 
 from reform import ReformSettings
 from Crypto.PublicKey import RSA
@@ -24,7 +26,10 @@ from pathlib import Path
 from tempfile import mkstemp
 from shutil import move
 from sys import exit
-
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 class SecretsManager:
 
@@ -145,7 +150,7 @@ class SecretsManager:
         fp = os.fdopen(fd, "w")
 
         # Write dict of all unencrypted strings
-        fp.write(json.dumps(oldVault, sort_keys=True, indent=4, separators=(",", ": ")))
+        fp.write(yaml.dump(oldVault, Dumper=Dumper))
         fp.close()
         preChecksum = hashlib.md5(open(temp_path, "rb").read()).hexdigest()
 
@@ -159,19 +164,19 @@ class SecretsManager:
             self.logger.info("No changes to secrets, bailing")
             return True
         """
-      When user exists, check the json is valid or allow them
+      When user exists, check the yaml is valid or allow them
       to fix it.
 
-      If JSON is valid break it up by environment and start encrypting
+      If yaml is valid break it up by environment and start encrypting
       strings per env using the proper keys.
       """
 
         with open(temp_path, "r") as f:
             try:
-                updated = json.loads(f.read())
-            except json.decoder.JSONDecodeError:
+                updated = yaml.load(f.read(), Loader=Loader)
+            except Exception as e:
                 self.logger.error(
-                    "Interactive edit contained invalid JSON. '%s'" % (f.read())
+                    "Interactive edit contained invalid yaml. '%s'" % (f.read())
                 )
                 exit(-3)
 
@@ -195,12 +200,12 @@ class SecretsManager:
         try:
             with open(env_secret, "r") as f:
                 try:
-                    cipheredSecrets = json.loads(f.read())
+                    cipheredSecrets = yaml.load(f.read(), Loader=Loader )
                     self.logger.debug(
                         "Read file: %s got %s" % (env_secret, cipheredSecrets)
                     )
-                except json.decoder.JSONDecodeError:
-                    self.logger.error("Error loading %s secrets json" % (env_secret))
+                except Exception as e:
+                    self.logger.error("Error loading %s secrets yaml" % (env_secret))
                     exit(-5)
 
                 self.logger.debug(cipheredSecrets)
@@ -215,7 +220,7 @@ class SecretsManager:
         newVault = self.secretEnecoderRing(plaintext_config)
         with open(secret_file, "w+") as _secret_file:
             _secret_file.write(
-                json.dumps(newVault, sort_keys=True, indent=4, separators=(",", ": "))
+                yaml.dump(newVault, Dumper=Dumper)
             )
 
     def secretEnecoderRing(self, secrets):

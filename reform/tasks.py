@@ -5,6 +5,7 @@ import configparser
 import glob
 import hashlib
 import io
+import yaml
 import json
 import logging
 import os
@@ -33,6 +34,10 @@ from pathlib import Path
 from tempfile import mkstemp
 from shutil import move
 from sys import exit
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 # A few quick and dirty global configs
 # TODO Move these to config file
@@ -545,8 +550,8 @@ def get_config(c):
     """
     Fetches part of the config for use in a terraform map.
     Terraform can't handle multidimensional maps, this tool fetches a section of
-    map and returns it as json.  Unlike other tasks, this tasks gets it's args
-    from a json string sent to stdin.
+    map and returns it as yaml.  Unlike other tasks, this tasks gets it's args
+    from a yaml string sent to stdin.
     """
     p_log("Task: get_config")
     reform_root = settings.GetReformRoot()
@@ -556,7 +561,7 @@ def get_config(c):
 
     lines = list(filter(None, lines))
     if len(lines) != 0:
-        params = json.loads(",".join(lines))
+        params = yaml.load(",".join(lines), Loader=Loader)
 
     c = {}
 
@@ -568,7 +573,7 @@ def get_config(c):
         )
         if os.path.exists(file):
             with open(file, "r") as f:
-                config = json.loads(f.read())
+                config = yaml.load(f.read(), Loader=Loader)
         else:
             p_log("Nested map not found: %s" % (file))
             exit(5)
@@ -579,7 +584,7 @@ def get_config(c):
 
     if "swimlanes" in config:
         members = config["swimlanes"]
-        # debug("Nested map found: %s"%(json.dumps(members)))
+        # debug("Nested map found: %s"%(yaml.dump(members, Dump=Dumper)))
         if (
             params["client"] in members
             and params["service"] in members[params["client"]]["services"]
@@ -802,7 +807,7 @@ def secrets(c, quadrant, cipher="PKCS1_v1_5"):
     Note: this will be a little slower than terraforms native rsadecrypt
 
 
-    # config/${quadrant}/secrets.json
+    # config/${quadrant}/secrets.yaml
       {
         "foo": {
           "bar": {

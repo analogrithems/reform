@@ -1,9 +1,12 @@
 import configparser
 import os
 import logging
-import json
+import yaml
 from reform.ReformSettingsError import ReformSettingsError
-
+try:
+    from yaml import CLoader as Loader, CDumper as Dumper
+except ImportError:
+    from yaml import Loader, Dumper
 
 class ReformSettings:
     """
@@ -16,8 +19,8 @@ class ReformSettings:
     """
 
     reform_settings_file = ".reform"
-    reform_quadrant_config_file = "config.json"
-    reform_quadrant_secret_file = "secrets.json"
+    reform_quadrant_config_file = "config.yaml"
+    reform_quadrant_secret_file = "secrets.yaml"
     reform_settings_path = ""
     changed = False
 
@@ -102,7 +105,7 @@ class ReformSettings:
 
     def NewQuadrant(self, bucket, quadrant, region):
 
-        # Step 1) make configs/${quadrant}/config.json if not exists
+        # Step 1) make configs/${quadrant}/config.yaml if not exists
         quadrant_dir = "%s/configs/%s" % (self.GetReformRoot(), quadrant)
         os.makedirs(quadrant_dir, 0o755, True)
 
@@ -112,7 +115,7 @@ class ReformSettings:
 
             with open(config_file, "w+") as _config_file:
                 _config_file.write(
-                    json.dumps(config, sort_keys=True, indent=4, separators=(",", ": "))
+                    yaml.dump(config, Dumper=Dumper)
                 )
             _config_file.close()
 
