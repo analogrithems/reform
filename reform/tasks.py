@@ -15,10 +15,13 @@ import re
 import subprocess
 import sys
 import tempfile
-import time
 import traceback
 
+from timeit import default_timer as timer
+from datetime import timedelta
+
 from reform import ConfigManager, SecretsManager, ReformSettings
+from reform.ReformSettingsError import ReformSettingsError
 from jinja2 import Environment, FileSystemLoader
 from invoke import task
 from invoke.util import debug
@@ -51,13 +54,17 @@ outputs = "text (default), json"
 os.environ["TF_IN_AUTOMATION"] = "1"
 
 
-def p_log(msg, severity="info"):
-    """
-    This function will output to the console useful information.
-    """
-    run_time = time.process_time()
-    print("%s: %s. (%s)" % (severity.upper(), msg, run_time), file=sys.stderr)
+root = logging.getLogger()
+root.setLevel(logging.INFO)
 
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(levelname)s: %(message)s')
+handler.setFormatter(formatter)
+root.addHandler(handler)
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 def stat_wrap(func):
     """
@@ -66,7 +73,7 @@ def stat_wrap(func):
 
     def inner(*args, **kwargs):
         run_time = time.process_time()
-        p_log("Completed in %s" % (run_time))
+        logging.info("Completed in %s" % (run_time))
         return func(*args, **kwargs)
 
     return inner
@@ -99,11 +106,11 @@ def create(c, path=None, quadrant=None, bucket=None, region=None):
     if path == None:
         path = os.getcwd()
 
-    p_log("Task: Create project %s" % (path))
+    logging.info("Task: Create project %s" % (path))
 
     ReformSettings.ReformSettings.InitReform(path)
 
-    # If quadrant, bucket and region specified lets build the out
+    # If quadrant, bucket and region specified lets build them out
     if quadrant and bucket and region:
 
         # This will create our new RSA key pair in our bucket and add an entry to or .reform settings file
@@ -114,7 +121,6 @@ def create(c, path=None, quadrant=None, bucket=None, region=None):
         settings = ReformSettings.ReformSettings()
         result = settings.NewQuadrant(bucket, quadrant, region)
 
-        # TODO - Should we create configs.auto.tvars and state.tf?
 
 
 # TODO All terraform tasks should be namespaced
@@ -129,40 +135,46 @@ def clean(c, project):
     This will clean up the terraform cache directory reform files from your project
     You need to do this between quadrants
     """
-    p_log("Task: Clean")
+    logging.info("Task: Clean")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     reform_root = settings.GetReformRoot()
     if project not in projects:
-        debug("Clean: Not a valid project: '%s'" % (project))
-        p_log("Clean: Not a valid project: '%s'" % (project))
+        logging.info("Clean: Not a valid project: '%s'" % (project))
         exit(1)
 
     project_path = "%s/projects/%s/.terraform" % (reform_root, project)
     project_tf_cache = Path(project_path)
     if not project_tf_cache.is_dir():
-        debug("Clean: Project cache path does not exists: '%s'" % (project_path))
+        logging.warning("Clean: Project cache path does not exists: '%s'" % (project_path))
 
     clean = c.run("rm -Rf %s" % (project_path)).stdout.strip()
-    debug("Clean Result: %s" % (clean))
+    logging.debug("Clean Result: %s" % (clean))
 
     old_project_tfplan = "%s/projects/%s/tfplan" % (reform_root, project)
     old_project_tfplan_path = Path(old_project_tfplan)
     if old_project_tfplan_path.is_file():
         os.remove(old_project_tfplan)
-        debug("Clean: Removed '%s'" % (old_project_tfplan))
+        logging.debug("Clean: Removed '%s'" % (old_project_tfplan))
 
     # We should also cleanup any preform files at this step just incase they
     # change and get abandoned
     preform_path = "%s/projects/%s/**/preform_*.tf" % (reform_root, project)
     for filename in glob.iglob(preform_path, recursive=True):
-        debug("Clean: removing %s" % (filename))
+        logging.debug("Clean: removing %s" % (filename))
         os.remove(filename)
 
     # TODO Remove preform files from modules
     preform_path = "%s/modules/%s/**/preform_*.tf" % (reform_root, project)
     for filename in glob.iglob(preform_path, recursive=True):
-        debug("Clean: removing %s" % (filename))
+        logging.debug("Clean: removing %s" % (filename))
         os.remove(filename)
 
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Clean in {round(elapsed_time.total_seconds(), 3)}s")
 
 @task(
     help={
@@ -176,20 +188,22 @@ def init(c, project, quadrant):
     Before terraform can run we need to initialize it.
     The init process sets up the backend for state management and insures we don't collide quadrants.
     """
-    p_log("Task: Init")
+    logging.info("Task: Init")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
     reform_root = settings.GetReformRoot()
 
     # TODO build this dynamically
     if project not in projects:
-        debug("Init: Not a valid project: '%s'" % (project))
-        p_log("Init: Not a valid project: '%s'" % (project))
+        logging.info("Init: Not a valid project: '%s'" % (project))
         exit(1)
 
     project_path = "%s/projects/%s" % (reform_root, project)
     project_tf = Path(project_path)
     if not project_tf.is_dir():
-        debug("Init: Project path does not exists: '%s'" % (project_path))
-        p_log("Init: Project path does not exists: '%s'" % (project_path))
+        logging.info("Init: Project path does not exists: '%s'" % (project_path))
         exit(2)
 
     # Run pre task
@@ -199,9 +213,12 @@ def init(c, project, quadrant):
     _cmd = "%s init " % (tf_bin)
     with c.cd(project_path):
         _fmt_ = c.run("%s fmt" % (tf_bin)).stdout.strip()
-        debug("Init: '%s fmt' output '%s'" % (tf_bin, _fmt_))
+        logging.debug("Init: '%s fmt' output '%s'" % (tf_bin, _fmt_))
         _init_ = c.run(_cmd).stdout.strip()
-        debug("Init: %s output '%s'" % (_cmd, _init_))
+        logging.debug("Init: %s output '%s'" % (_cmd, _init_))
+
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Init in {round(elapsed_time.total_seconds(), 3)}s")
 
 @task(
     help={
@@ -214,14 +231,13 @@ def mkdocs(c, project, quadrant):
     """
     This recursively runs terraform-docs on a project
     """
-    p_log("Start: terrafrom-docs")
+    logging.info("Start: terrafrom-docs")
     reform_root = settings.GetReformRoot()
 
     project_path = "%s/projects/%s" % (reform_root, project)
     project_tf = Path(project_path)
     if not project_tf.is_dir():
-        debug("Plan: Project path does not exists: '%s'" % (project_path))
-        p_log("Plan: Project path does not exists: '%s'" % (project_path))
+        logging.info("Plan: Project path does not exists: '%s'" % (project_path))
         exit(2)
 
     # Run pre task
@@ -235,11 +251,11 @@ def mkdocs(c, project, quadrant):
     _cmd = f"{tf_docs_bin} markdown document {tf_docs_args} {project_path} > README.md"
 
     with c.cd(project_path):
-        p_log("Running: %s" % (_cmd))
+        logging.info("Running: %s" % (_cmd))
         _init_ = c.run(_cmd).stdout.strip()
-        debug("terrafrom-docs: %s output '%s'" % (_cmd, _init_))
+        logging.debug("terrafrom-docs: %s output '%s'" % (_cmd, _init_))
 
-    p_log("Complete: terrafrom-docs")
+    logging.info("Complete: terrafrom-docs")
 
 @task(
     help={
@@ -253,14 +269,18 @@ def plan(c, project, quadrant):
     This does a standard terraform plan in the project specified.
     It also requires to quadrant to specify what to propose changes for.
     """
-    p_log("Start: Plan")
+    logging.info("Start: Plan")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     reform_root = settings.GetReformRoot()
 
     project_path = "%s/projects/%s" % (reform_root, project)
     project_tf = Path(project_path)
     if not project_tf.is_dir():
-        debug("Plan: Project path does not exists: '%s'" % (project_path))
-        p_log("Plan: Project path does not exists: '%s'" % (project_path))
+        logging.info("Plan: Project path does not exists: '%s'" % (project_path))
         exit(2)
 
     # Run pre task
@@ -270,13 +290,14 @@ def plan(c, project, quadrant):
         init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
 
-    _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
+    _cmd = "sleep 5 && %s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
-        debug("Plan: %s output '%s'" % (_cmd, _init_))
+        logging.debug("Plan: %s output '%s'" % (_cmd, _init_))
 
-    p_log("Complete: Plan")
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Plan in {round(elapsed_time.total_seconds(), 3)}s")
 
 
 @task(
@@ -291,20 +312,23 @@ def apply(c, project, quadrant):
     This applies a set of changes to terraform.
     It will run a plan first if a tfplan file is not found
     """
-    p_log("Start: Apply")
+    logging.info("Start: Apply")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     reform_root = settings.GetReformRoot()
 
     # TODO build this dynamically
     if project not in projects:
-        debug("Apply: Not a valid project: '%s'" % (project))
-        p_log("Apply: Not a valid project: '%s'" % (project))
+        logging.info("Apply: Not a valid project: '%s'" % (project))
         exit(1)
 
     project_path = "%s/projects/%s" % (reform_root, project)
     project_tf = Path(project_path)
     if not project_tf.is_dir():
-        debug("Apply: Project path does not exists: '%s'" % (project_path))
-        p_log("Apply: Project path does not exists: '%s'" % (project_path))
+        logging.info("Apply: Project path does not exists: '%s'" % (project_path))
         exit(2)
 
     # Run plan if no tfplan exists
@@ -312,16 +336,57 @@ def apply(c, project, quadrant):
     project_tfplan_path = Path(project_tfplan)
     if not project_tfplan_path.is_file():
         plan(c, project, quadrant)
-        debug("Apply: produce a plan")
+        logging.debug("Apply: produce a plan")
 
     pl = os.getenv("TF_PARALLEL", 10)
     _cmd = "%s apply -parallelism=%s %s " % (tf_bin, pl, project_tfplan)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
-        debug("Apply: %s output '%s'" % (_cmd, _init_))
+        logging.debug("Apply: %s output '%s'" % (_cmd, _init_))
 
-    p_log("Complete: Apply")
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Apply in {round(elapsed_time.total_seconds(), 3)}s")
+
+
+@task(
+    help={
+        "project": "Which project do we want to terraform destroy. ",
+        "quadrant": "Which quadrant to destroy. (Available: [%s])" % (quadrants),
+    }
+)
+def destroy(c, project, quadrant):
+    """
+    This will destroy the terraform project specified.
+    """
+    logging.info("Start: Destroy")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
+    reform_root = settings.GetReformRoot()
+
+    # TODO build this dynamically
+    if project not in projects:
+        logging.info("Destroy: Not a valid project: '%s'" % (project))
+        exit(1)
+
+    project_path = "%s/projects/%s" % (reform_root, project)
+    project_tf = Path(project_path)
+    if not project_tf.is_dir():
+        logging.info("Destroy: Project path does not exists: '%s'" % (project_path))
+        exit(2)
+
+    pl = os.getenv("TF_PARALLEL", 10)
+    _cmd = "%s destroy -parallelism=%s" % (tf_bin, pl)
+
+    with c.cd(project_path):
+        _init_ = c.run(_cmd).stdout.strip()
+        logging.debug("Destroy: %s output '%s'" % (_cmd, _init_))
+
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Destroy in {round(elapsed_time.total_seconds(), 3)}s")
 
 
 @task(
@@ -341,13 +406,13 @@ def deploy(c, project, quadrant):
     * Apply the changes
     * Commit the changes if there are any
     """
-    p_log("Start: Deploy")
+    logging.info("Start: Deploy")
     # Plan also Inits, init also cleans
     plan(c, project, quadrant)
 
     # Apply our plan if we have not died yet
     apply(c, project, quadrant)
-    p_log("Complete: Deploy")
+    logging.info("Complete: Deploy")
 
 
 # TODO make a project arg to only preform one project at a time
@@ -358,12 +423,17 @@ def deploy(c, project, quadrant):
 )
 def preform(c, quadrant):
     """
-    A simple preprocessor for terraform that processes *\*.tf.tpl* files.
+    A simple preprocessor for terraform that processes *\\*.tf.tpl* files.
     This is how we work around terraforms lack of loops and conditionals.
 
     This is also how we seed our dynamic reform configs for state backend and and configs we've defined.
     """
-    p_log("Start: Preform")
+    logging.info("Start: Preform")
+    start = timer()
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     projects_base_path = settings.GetReformRoot()
 
     # TODO Open this more to include modules
@@ -386,7 +456,7 @@ def preform(c, quadrant):
 
     # Lets load custom helpers
     if os.path.isfile(f"{work_dir}/helpers/__init__.py"):
-        p_log("Found custom helper, importing")
+        logging.info("Found custom helper, importing")
         sys.path.insert(1, work_dir)
 
         try:
@@ -394,8 +464,8 @@ def preform(c, quadrant):
 
             preform_hook()
         except Exception as error:
-            p_log(f"An error occurred: {error}")
-            p_log(f"Failed to find and run preform_hook() in {work_dir}/helpers")
+            logging.info(f"An error occurred: {error}")
+            logging.info(f"Failed to find and run preform_hook() in {work_dir}/helpers")
             traceback.print_exc()
             exit(-22)
 
@@ -416,14 +486,14 @@ def preform(c, quadrant):
                 if '.git/' in directory:
                     continue
                 if file.endswith(template_suffix):
-                    debug("Found template file: %s" % (file))
+                    logging.debug("Found template file: %s" % (file))
                     full_file_path = os.path.join(directory, file)
                     template = env.get_template(full_file_path.replace(work_dir, ""))
                     new_full_file_path = re.sub(
                         template_suffix, "", os.path.join(directory, "preform_" + file)
                     )
 
-                    debug("Generating file: %s" % (new_full_file_path))
+                    logging.debug("Generating file: %s" % (new_full_file_path))
                     try:
                         with open(new_full_file_path, "w+") as outfile:
                             redered_template = template.render(
@@ -432,7 +502,7 @@ def preform(c, quadrant):
                                 quadrant=quadrant,
                                 secrets=secrets,
                             )
-                            debug(redered_template)
+                            logging.debug(redered_template)
                             outfile.write(
                                 "##################################################\n"
                             )
@@ -461,14 +531,14 @@ def preform(c, quadrant):
                 continue
 
             if file.endswith(template_suffix):
-                debug("Found template file: %s" % (file))
+                logging.debug("Found template file: %s" % (file))
                 full_file_path = os.path.join(directory, file)
                 template = env.get_template(full_file_path.replace(work_dir, ""))
                 new_full_file_path = re.sub(
                     template_suffix, "", os.path.join(directory, "preform_" + file)
                 )
 
-                debug("Generating file: %s" % (new_full_file_path))
+                logging.debug("Generating file: %s" % (new_full_file_path))
                 with open(new_full_file_path, "w+") as outfile:
                     redered_template = template.render(
                         config=config,
@@ -476,7 +546,7 @@ def preform(c, quadrant):
                         quadrant=quadrant,
                         secrets=secrets,
                     )
-                    debug(redered_template)
+                    logging.debug(redered_template)
                     outfile.write(
                         "##################################################\n"
                     )
@@ -492,8 +562,8 @@ def preform(c, quadrant):
                     outfile.write(redered_template)
                     outfile.write("\n\n")
                 outfile.close()
-
-    p_log("Complete: Preform")
+    elapsed_time = timedelta(seconds=(timer()-start))
+    logging.info(f"Complete: Preform in {round(elapsed_time.total_seconds(), 3)}s")
 
 
 @task(
@@ -508,7 +578,7 @@ def mkS3Bucket(c, bucket, region):
     This will use the kms key with alias aws/s3 for encrypting contents
     of S3 bucket.
     """
-    p_log("Task: mkS3Bucket")
+    logging.info("Task: mkS3Bucket")
     # First lets find our kms key with alias kms/s3
     client = boto3.client("kms", region)
     bucket_constraint = {}
@@ -518,7 +588,7 @@ def mkS3Bucket(c, bucket, region):
         s3c = boto3.client("s3", region_name=region)
         bucket_constraint = {"LocationConstraint": region}
 
-    p_log("Region: %s" % (region))
+    logging.info("Region: %s" % (region))
     create_args = {"ACL": "private", "Bucket": bucket}
     if region != "us-east-1":
         create_args["CreateBucketConfiguration"] = bucket_constraint
@@ -527,7 +597,7 @@ def mkS3Bucket(c, bucket, region):
     response = s3c.put_bucket_versioning(
         Bucket=bucket, VersioningConfiguration={"Status": "Enabled"}
     )
-    debug("mkS3Bucket: {}".format(response))
+    logging.debug("mkS3Bucket: {}".format(response))
     response = s3c.put_bucket_encryption(
         Bucket=bucket,
         ServerSideEncryptionConfiguration={
@@ -540,8 +610,8 @@ def mkS3Bucket(c, bucket, region):
             ]
         },
     )
-    debug("mkS3Bucket secure: {}".format(response))
-    p_log("%s created in %s" % (bucket, region))
+    logging.debug("mkS3Bucket secure: {}".format(response))
+    logging.info("%s created in %s" % (bucket, region))
 
 
 # TODO This function should not be in core, or be reconfigured for more general args
@@ -553,7 +623,11 @@ def get_config(c):
     map and returns it as yaml.  Unlike other tasks, this tasks gets it's args
     from a yaml string sent to stdin.
     """
-    p_log("Task: get_config")
+    logging.info("Task: get_config")
+    settings = ReformSettings.ReformSettings()
+    if settings.reform_settings_path is False:
+        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     reform_root = settings.GetReformRoot()
     params = {}
 
@@ -575,16 +649,16 @@ def get_config(c):
             with open(file, "r") as f:
                 config = yaml.load(f.read(), Loader=Loader)
         else:
-            p_log("Nested map not found: %s" % (file))
+            logging.info("Nested map not found: %s" % (file))
             exit(5)
     else:
         config = ConfigManager.ConfigManager({"env": params["env"]}).get_merge_configs()
 
-    p_log("args: %s" % (params))
+    logging.info("args: %s" % (params))
 
     if "swimlanes" in config:
         members = config["swimlanes"]
-        # debug("Nested map found: %s"%(yaml.dump(members, Dump=Dumper)))
+        # logging.info("Nested map found: %s"%(yaml.dump(members, Dump=Dumper)))
         if (
             params["client"] in members
             and params["service"] in members[params["client"]]["services"]
@@ -610,7 +684,7 @@ def pass_gen(c, length=10):
     Creates a strong random password.
 
     """
-    p_log("Task: pass_gen")
+    logging.info("Task: pass_gen")
     print(SecretsManager.SecretsManager({}).passwordGenerate(length))
 
 
@@ -632,7 +706,7 @@ def cryptic(c, quadrant, encrypt="", decrypt="", cipher="PKCS1_v1_5", output="te
     This cipher wont work natively with Terraform so use a data external to have
     this tool decrypt your big strings at runtime.
     """
-    p_log("Task: cryptic")
+    logging.info("Task: cryptic")
     if encrypt:
         response = SecretsManager.SecretsManager(
             {"key": quadrant, "cipher": cipher}
@@ -661,7 +735,7 @@ def key_gen(c, bucket, quadrant, region):
     Create RSA keys for secret management.
     We will use these keys to encrypt and decrypt our secrets in terraform.
     """
-    p_log("Task: key_gen")
+    logging.info("Task: key_gen")
     print(
         SecretsManager.SecretsManager(
             {"key": quadrant, "bucket": bucket, "region_name": region}
@@ -681,13 +755,13 @@ def config_set(c, quadrant, attribute, value="", secure=False):
     """
     Set an attribute in our terraform configs.
     """
-    p_log("Task: config_set")
+    logging.info("Task: config_set")
     result = ConfigManager.ConfigManager(
         {"env": quadrant, "attribute": attribute, "value": value}
     ).upsert()
 
     if result:
-        p_log("ok")
+        logging.info("ok")
         return True
     return False
 
@@ -706,7 +780,7 @@ def config_get(c, quadrant, attribute, cipher=None, output="text"):
     """
     Get an attribute from our configs.  If you set the cipher then it assumes you want config from a secret.
     """
-    p_log("Task: config_get")
+    logging.info("Task: config_get")
     result = ConfigManager.ConfigManager(
         {"env": quadrant, "attribute": attribute, "cipher": cipher}
     ).read()
@@ -731,7 +805,7 @@ def config_delete(c, quadrant, attribute):
     """
     Delete an attribute in our terraform configs.
     """
-    p_log("Task: config_delete")
+    logging.info("Task: config_delete")
     result = ConfigManager.ConfigManager(
         {"env": quadrant, "attribute": attribute}
     ).delete()
@@ -752,7 +826,7 @@ def config_delete_file(c, quadrant):
     """
     Delete/Truncate the whole config file
     """
-    p_log("Task: config_delete_file")
+    logging.info("Task: config_delete_file")
     result = ConfigManager.ConfigManager({"env": quadrant}).delete_config()
 
     if result:
@@ -772,7 +846,7 @@ def key_exists(c, bucket, quadrant):
     """
     Check to see if a given key already exists
     """
-    p_log("Task: key_exists")
+    logging.info("Task: key_exists")
     r = SecretsManager.SecretsManager({"bucket": bucket}).keyExists(quadrant)
     if r:
         print("Found")
@@ -841,7 +915,7 @@ def secrets(c, quadrant, cipher="PKCS1_v1_5"):
     time terraform will call reform to decrypt your secret.
 
     """
-    p_log("Task: Secrets")
+    logging.info("Task: Secrets")
     # TODO make this work with revised config format
     print(
         SecretsManager.SecretsManager(
@@ -860,17 +934,17 @@ def secrets(c, quadrant, cipher="PKCS1_v1_5"):
 def rotate_key(c, quadrant, cipher="PKCS1_v1_5"):
     """
     Rotate our RSA Keys.
-    This will move our old keys to *\*.old* and generate a new key pair.
+    This will move our old keys to *\\*.old* and generate a new key pair.
     It then walks through our configs and re-encrypts the secrets with the new
     keys
     """
-    p_log("Task: rotate_key")
+    logging.info("Task: rotate_key")
     print(SecretsManager.SecretsManager({"key": quadrant, "cipher": cipher}).rekey())
 
 
 @task
 def auto_generate_config(c):
-    p_log("Task: auto_generate_config")
+    logging.info("Task: auto_generate_config")
     reform_root = settings.GetReformRoot()
 
     config = ConfigManager.ConfigManager(

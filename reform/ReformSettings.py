@@ -2,6 +2,7 @@ import configparser
 import os
 import logging
 import yaml
+import sys
 from reform.ReformSettingsError import ReformSettingsError
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
@@ -31,10 +32,11 @@ class ReformSettings:
         directory until a file is found or we reach root and raise an error
         """
         self.reform_settings_path = ReformSettings.find_settings_file(os.getcwd())
+        self.logger = logging.getLogger(__name__)
         if self.reform_settings_path is not False:
             self.config = configparser.ConfigParser()
             self.config.read(self.reform_settings_path)
-        self.logger = logging.getLogger(__name__)
+
 
     def projects(self):
         if self.reform_settings_path is not False:
