@@ -36,7 +36,14 @@ class ReformSettings:
         if self.reform_settings_path is not False:
             self.config = configparser.ConfigParser()
             self.config.read(self.reform_settings_path)
+            self.load_env()
 
+    def load_env(self):
+        if self.reform_settings_path is not False:
+            self.logger.debug("Loading Environment Variables")
+            section = "global"
+            for key, value in self.config.items(section):
+                os.environ[key.upper()] = value
 
     def projects(self):
         if self.reform_settings_path is not False:

@@ -193,6 +193,7 @@ def init(c, project, quadrant):
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
         sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+
     reform_root = settings.GetReformRoot()
 
     # TODO build this dynamically
@@ -290,7 +291,7 @@ def plan(c, project, quadrant):
         init(c, project, quadrant)
     pl = os.getenv("TF_PARALLEL", 10)
 
-    _cmd = "sleep 5 && %s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
+    _cmd = "%s plan -out=tfplan -parallelism=%s" % (tf_bin, pl)
 
     with c.cd(project_path):
         _init_ = c.run(_cmd).stdout.strip()
