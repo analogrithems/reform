@@ -192,7 +192,8 @@ def init(c, project, quadrant):
     start = timer()
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     reform_root = settings.GetReformRoot()
 
@@ -274,7 +275,8 @@ def plan(c, project, quadrant):
     start = timer()
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     reform_root = settings.GetReformRoot()
 
@@ -317,7 +319,8 @@ def apply(c, project, quadrant):
     start = timer()
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     reform_root = settings.GetReformRoot()
 
@@ -364,7 +367,8 @@ def destroy(c, project, quadrant):
     start = timer()
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     reform_root = settings.GetReformRoot()
 
@@ -433,7 +437,8 @@ def preform(c, quadrant):
     start = timer()
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     projects_base_path = settings.GetReformRoot()
 
@@ -627,7 +632,8 @@ def get_config(c):
     logging.info("Task: get_config")
     settings = ReformSettings.ReformSettings()
     if settings.reform_settings_path is False:
-        sys.exit(ReformSettingsError("No .reform Settings File Found, Please Run reform create"))
+        ReformSettingsError("No .reform Settings File Found, Please Run reform create")
+        sys.exit()
 
     reform_root = settings.GetReformRoot()
     params = {}

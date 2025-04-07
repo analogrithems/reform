@@ -8,6 +8,7 @@ from hcl2 import load
 from hcl2.parser import hcl2
 from hcl2.version import __version__
 from lark import UnexpectedToken, UnexpectedCharacters
+from jinja2 import Template
 
 from reform import ReformSettings, SecretsManager
 from pyee import EventEmitter
@@ -110,17 +111,36 @@ class ConfigManager:
             if os.path.exists(self.default_config_file):
                 with open(self.default_config_file, "r+") as f:
                     # Read file contents
-                    defaults = yaml.load(os.path.expandvars(f.read()), Loader=Loader)
+                    raw = yaml.safe_load(os.path.expandvars(f.read()))
+                    defaults = ConfigManager.resolve_placeholders(raw, raw)
             elif os.path.exists(self.auto_default_config_file):
                 with open(self.auto_default_config_file, "r+") as f:
                     # Read file contents
-                    defaults = yaml.load(os.path.expandvars(f.read()), Loader=Loader)
+                    raw = yaml.safe_load(os.path.expandvars(f.read()))
+                    defaults = ConfigManager.resolve_placeholders(raw, raw)
 
         with open(self.config_file, "r+") as f:
             # Read file contents
-            configs = reduce(ConfigManager.deep_merge, (defaults, yaml.load(os.path.expandvars(f.read()), Loader=Loader)))
+            raw = yaml.safe_load(os.path.expandvars(f.read()))
+            configs = ConfigManager.resolve_placeholders(raw, raw)
+            configs = ConfigManager.deep_merge(defaults, configs)
+
+        logging.getLogger(__name__).debug(
+            f"ConfigManager.get_merge_configs: {configs}"
+        )
 
         return configs
+
+    def resolve_placeholders(data, context):
+        if isinstance(data, dict):
+            return {ConfigManager.resolve_placeholders(key, context): ConfigManager.resolve_placeholders(value, context) for key, value in data.items()}
+        elif isinstance(data, list):
+            return [ConfigManager.resolve_placeholders(item, context) for item in data]
+        elif isinstance(data, str):
+            template = Template(data)
+            return template.render(context)
+        else:
+            return data
 
     def get(configs, attribute):
         if "." in attribute:
