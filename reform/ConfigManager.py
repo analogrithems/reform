@@ -50,6 +50,10 @@ class ConfigManager:
             cf,
         )
 
+        if not os.path.exists(self.default_config_file):
+            self.logger.critical(f"Missing default config file: {self.default_config_file}")
+            exit(-1)
+
         if not os.path.exists(self.config_file):
             self.logger.warn(
                 "'%s' file does not exists, creating it" % (self.config_file)
@@ -61,7 +65,7 @@ class ConfigManager:
     def rm(d, keys):
         if "." in keys:
             key, rest = keys.split(".", 1)
-            ConfigManager.rm(d[key], rest, item)
+            ConfigManager.rm(d[key], rest)
         else:
             if keys not in d:
                 logging.getLogger(__name__).info("Missing %s from %s" % (keys, d))
