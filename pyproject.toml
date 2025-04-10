@@ -6,7 +6,7 @@ authors = ["Aaron Collins <Aaron.Collinsa+reform@gmail.com>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.12"
+python = ">=3.8"
 invoke = "^2.2.0"
 boto3 = ">=1.36.24"
 pycryptodome = "^3.21.0"
